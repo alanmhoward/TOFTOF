@@ -140,7 +140,7 @@ void ReadEvent(ifstream &infile){
     event.modID = (rawevent & mask_modID) >> 44;
     event.slotID = (rawevent & mask_slotID) >> 39;
     // tubeID = (mcpdID-1)*64 + modID*16 + slotID
-    event.tubeID= (event.mcpdID << 6 | event.modID << 4 | event.slotID);
+    event.tubeID= (header.mcpdID << 6 | event.modID << 4 | event.slotID);
   }
   else if (event.eventID==1){
     event.trigID = (rawevent & mask_trigID) >> 44;
