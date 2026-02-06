@@ -60,11 +60,13 @@ struct Event{
   uint64_t time;           // Time stamp, units of 100 ns 
   uint8_t eventID;         // 0 for real events, 1 for self triggers
   uint32_t eventTS;        // The 19 bit time stamp within the buffer
-  uint8_t trigID;	   // For trigger events (eventID==1) the trigger source
-  uint8_t dataID;	   // For trigger events (eventID==1) the data source
+  uint16_t trigID;	   // For trigger events (eventID==1) the trigger source
+  uint16_t dataID;	   // For trigger events (eventID==1) the data source
   uint32_t tData;  	   // For trigger events (eventID==1) the data package - some data sources may not use all 21 bits available
-}event, event0;        // use event to write current value and event0 as a template to reset the struct after writing to file
+};  //event, event0;        // use event to write current value and event0 as a template to reset the struct after writing to file
 
+Event event;
+Event event0 = {};
 
 // -------------------------------------------------------------------//
 // --------------------- File reading functions ----------------------//
@@ -137,6 +139,8 @@ void ReadEvent(ifstream &infile){
     event.xpos = (rawevent & mask_xpos) >> 19;
     event.modID = (rawevent & mask_modID) >> 44;
     event.slotID = (rawevent & mask_slotID) >> 39;
+    // tubeID = modID*16 + slotID
+    event.tubeID= (event.modID << 4 | event.slotID);
   }
   else if (event.eventID==1){
     event.trigID = (rawevent & mask_trigID) >> 44;
@@ -244,7 +248,7 @@ void mdat2root(TString filename, int debug=0){
   
   // Loop over all buffers - break loop when the wrong buffer header type is found
   
-  while(true){
+  while(true && entry_num<100000){
   
     if (ReadBuffer(infile) == 1) break;
     else buffer_num++;
