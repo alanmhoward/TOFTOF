@@ -248,7 +248,7 @@ void mdat2root(TString filename, int debug=0){
   
   // Loop over all buffers - break loop when the wrong buffer header type is found
   
-  while(true && entry_num<100000){
+  while(true){
   
     if (ReadBuffer(infile) == 1) break;
     else buffer_num++;
