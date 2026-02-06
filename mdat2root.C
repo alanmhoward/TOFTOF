@@ -1,6 +1,7 @@
 // Convert qmesydaq mdat files to ROOT format
-// For use with MTSD + MPCD setups
-// Only 4 bits are used for slotID - officially 5 bits are reserved but the most significant bit isn't used (since only 16 single ended tubes can be connected per MTSD)
+// For use with the new TofTof readout
+// This is a modified version of the MTSD format - some unused bits are repurposed
+// Since we have only digital (TTL) input the amplitude is ignored, for example
 
 // -------------------------------------------------------------------//
 // ------------------------- Global variables ------------------------//
@@ -13,12 +14,15 @@
 // amp: amplitude, calculated internally in the MTSD from the signal amplitude
 // xpos: not used in the MTSD format
 // time: 19 bit fine timestamp (counts up to 52.4 ms with 100-ns time bins). Combine with the header timestamp to get the absolute event time.
-ULong64_t mask_eventID = 0b100000000000000000000000000000000000000000000000;
-ULong64_t mask_modID =   0b011100000000000000000000000000000000000000000000;
-ULong64_t mask_slotID =  0b000001111000000000000000000000000000000000000000;
-ULong64_t mask_amp =     0b000000000111111111100000000000000000000000000000;
-ULong64_t mask_xpos =    0b000000000000000000011111111110000000000000000000;
-ULong64_t mask_time =    0b000000000000000000000000000001111111111111111111;
+ULong64_t mask_eventID =    0b100000000000000000000000000000000000000000000000;
+ULong64_t mask_modID =      0b011100000000000000000000000000000000000000000000;
+ULong64_t mask_slotID =     0b000001111000000000000000000000000000000000000000;
+ULong64_t mask_amp =        0b000000000001111111100000000000000000000000000000;
+ULong64_t mask_xpos =       0b000000000000000000011111111110000000000000000000;
+ULong64_t mask_time =       0b000000000000000000000000000001111111111111111111;
+
+// Note that the amp mask should have two extra bits when not modified
+// ULong64_t mask_amp =        0b000000000111111111100000000000000000000000000000;
 
 // Masks for extracting data from trigger event blocks (eventID==1)
 // trigID: event trigger source, timer 1-4 get ID 1-4, rear panel TTL inputs get ID 5-6, ID 7 is for compare register (?)
@@ -27,7 +31,7 @@ ULong64_t mask_time =    0b000000000000000000000000000001111111111111111111;
 ULong64_t mask_trigID =  0b011100000000000000000000000000000000000000000000;
 ULong64_t mask_dataID =  0b000011110000000000000000000000000000000000000000;
 ULong64_t mask_tData =   0b000000001111111111111111111110000000000000000000;
-
+// Time mask is same as for event data
 
 
 // Header parameters
@@ -49,7 +53,7 @@ struct Header{
 // Individual event parameters
 struct Event{
   uint16_t xpos;           // Position along tube
-  uint16_t ypos;           // Tube location
+  uint16_t tubeID;           // Tube location
   uint16_t modID;          // ID of the MPSD
   uint16_t slotID;         // ID of the tube
   uint16_t amp;            // Combined signal amplitude (both tube signals summed)
@@ -129,7 +133,7 @@ void ReadEvent(ifstream &infile){
   // Parameters to be read depend on the event type
   if (event.eventID==0){
     event.amp = (rawevent & mask_amp) >> 29;
-    event.ypos = ((rawevent & mask_slotID) >> 39) | ((rawevent & mask_modID) >> 41);
+    event.tubeID = ((rawevent & mask_slotID) >> 39) | ((rawevent & mask_modID) >> 41);
     event.xpos = (rawevent & mask_xpos) >> 19;
     event.modID = (rawevent & mask_modID) >> 44;
     event.slotID = (rawevent & mask_slotID) >> 39;
@@ -176,7 +180,7 @@ void PrintEvent(){
   cout << "----------------------------------------------------" << endl;
   cout << "EventID: " << int(event.eventID) << endl;
   cout << "xpos: " << event.xpos << endl;
-  cout << "ypos: " << event.ypos << endl;
+  cout << "tubeID: " << event.tubeID << endl;
   cout << "modID: " << event.modID << endl;
   cout << "slotID: " << event.slotID << endl;
   cout << "amp: " << event.amp << endl;
@@ -211,7 +215,7 @@ void mdat2root(TString filename, int debug=0){
 
   // Set up branches - link to struct parameters
   rawdata->Branch("xpos", &event.xpos, "xpos/s");
-  rawdata->Branch("ypos", &event.ypos, "ypos/s");
+  rawdata->Branch("tubeID", &event.tubeID, "tubeID/s");
   rawdata->Branch("modID", &event.modID, "modID/s");
   rawdata->Branch("slotID", &event.slotID, "slotID/s");
   rawdata->Branch("amp", &event.amp, "amp/s");
